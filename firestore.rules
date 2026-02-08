@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAdmin();
+    }
+
+    // Grievances
+    match /grievances/{grievanceId} {
+      // Students can create
+      allow create: if request.auth != null;
+      
+      // Students can read specific grievance if they are the owner
+      allow read: if request.auth != null && (resource.data.studentId == request.auth.uid || isAdmin());
+      
+      // Only admins can update status/remarks
+      allow update: if isAdmin();
+      
+      // Allow student to update their own grievance? (Maybe description only if pending?)
+      // keeping simple: only admin updates after submission for status/remarks
+    }
+  }
+}
